@@ -1,0 +1,14 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# Illustrator lock files
+~ai-*.tmp
+
+# Raw/synced pipeline data (regenerate with sync_*.sh) -- not tracked.
+/data/
+
+# Rendered figure output (regenerate via fig_gen/) -- not tracked, except
+# source design assets that aren't generated.
+/figs/*
+!/figs/illustrations/
