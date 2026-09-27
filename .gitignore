@@ -12,3 +12,8 @@ __pycache__/
 # source design assets that aren't generated.
 /figs/*
 !/figs/illustrations/
+
+# Scratch / review directories -- not part of the codebase.
+/_review_scratch/
+/_to_delete/
+/fig_gen/_to_delete/

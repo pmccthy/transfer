@@ -1,35 +1,54 @@
 #!/usr/bin/env bash
 # Sync the cross-model-vs-experiment ("combined") figure-generation code from
-# context-value-RNNs/unified_figures/ into data/combined/.
+# context-value-RNNs/results/transfer/combined/ into data/combined/.
 #
 # This is for figures that combine analysis of the experimental and RNN data
 # together (e.g. the chi-squared responder-group fit against real data) --
 # as opposed to data/rnns/ and data/experimental/, which are each one side
 # alone.
 #
-# Three things are excluded because they're shims into content synced
-# elsewhere, not unique to this side:
-#   unified_figures/transfer/        symlinks -> transfer_final/           (now data/rnns/transfer_final/)
-#   unified_figures/reversal/        symlinks -> reversal_study/results/   (now data/rnns/reversal_study/)
-#   unified_figures/experiment_data  symlink  -> neuronal-representations/results/transfer  (now data/experimental/)
+# One thing is excluded because it's a shim into content synced elsewhere,
+# not unique to this side:
+#   combined/transfer/   relative symlinks -> ../../{code,figure_data,
+#                         model_runs_ckpt,reversal/...}  (now data/rnns/...
+#                         via sync_rnns.sh)
+# The experimental side isn't symlinked in at all -- combined/
+# cross_model_vs_experiment/*.py reads it via an absolute NEURONAL_REPO path
+# (default ~/Documents/neuronal-representations/results/transfer), i.e.
+# data/experimental/ once synced by sync_experimental.sh, not a path inside
+# this repo.
+#
 # Paths inside compose.py/make_panels.py that currently resolve relative to
-# unified_figures/ (or via that absolute experiment_data symlink) will need
-# repointing at ../rnns/transfer_final, ../rnns/reversal_study, and
-# ../experimental once this lands -- that's fig_gen/combined/ work, not part
-# of this raw sync.
+# results/transfer/combined/transfer/ (the symlink shim above) or via
+# NEURONAL_REPO will need repointing at ../rnns/... and ../experimental
+# once this lands -- that's fig_gen/combined/ work, not part of this raw
+# sync.
+#
+# Known scratch/junk dirs under figs/ (_to_delete, _smoketest, _mock_test,
+# _stub_placeholder_not_real -- flagged during the Aug/Sep cleanup pass, not
+# real content) are excluded.
 set -euo pipefail
 
-SRC="${CXVAL_REPO:-$HOME/Documents/context-value-RNNs}/unified_figures"
+SRC="${CXVAL_REPO:-$HOME/Documents/context-value-RNNs}/results/transfer/combined"
 DST="$(cd "$(dirname "$0")" && pwd)/data/combined"
 
 EXCLUDES=(
   --exclude='__pycache__/' --exclude='.DS_Store' --exclude='*.pyc'
+  --exclude='_to_delete/' --exclude='_smoketest/' --exclude='_mock_test/'
+  --exclude='_stub_placeholder_not_real/' --exclude='smoketest/'
   --exclude='/transfer/'
-  --exclude='/reversal/'
-  --exclude='/experiment_data'
+  # CODE, not data -- synced into top-level analysis/fig_gen/ instead, see
+  # sync_code.py (called from sync_all.sh). cross_model_vs_experiment/'s
+  # group_counts/ and README.md are DATA and deliberately kept here.
+  --exclude='/analysis/'
+  --exclude='/cross_model_vs_experiment/*.py'
+  --exclude='/panels/'
+  --exclude='/style/'
+  --exclude='/compose.py'
+  --exclude='/make_panels.py'
 )
 
 mkdir -p "$DST"
 
-echo "== unified_figures/ (minus transfer/, reversal/, experiment_data shims) -> data/combined/ =="
+echo "== results/transfer/combined/ (minus transfer/ shim) -> data/combined/ =="
 rsync -avh "${EXCLUDES[@]}" "$@" "$SRC/" "$DST/"

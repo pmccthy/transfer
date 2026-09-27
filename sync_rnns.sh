@@ -1,56 +1,59 @@
 #!/usr/bin/env bash
-# Sync + reorganize the RNN-side pipelines from context-value-RNNs into
-# data/rnns/, merging transfer_final/ (pre-reversal) and reversal_study/
-# (reversal-learning: baseline + intervention studies) into one flat layout.
+# Sync the RNN-side pipeline from context-value-RNNs into data/rnns/.
 #
-# Why merged rather than mirrored 1:1: checked by MD5, transfer_final/'s own
-# model_runs_reversal(_5k)/figure_data_reversal(_5k)/figures_reversal(_5k)
-# are byte-identical duplicates of reversal_study/results/reversal_2500 and
-# reversal_5000; going the other way, reversal_study/results/model_runs and
-# figure_data are byte-identical duplicates of transfer_final's copies. Each
-# side's non-duplicate content is synced once, into data/rnns/ (pre-reversal)
-# and data/rnns/reversal/ (everything reversal-related, including the 8
-# intervention/pilot studies and RSA/population-similarity analyses that
-# only exist under reversal_study/).
+# As of the "unify transfer results" commit (context-value-RNNs 639c5db,
+# 1 Sep 2026), the pre-reversal pipeline, the reversal-learning pipeline, and
+# the combined RNN+experiment analysis all live together under one
+# results/transfer/ tree -- they used to be three separate top-level
+# bundles (transfer_final/, reversal_study/, unified_figures/), which is
+# what this script originally targeted and results/transfer_final/ still
+# sitting on disk, abandoned/stale since Jun 26, is a leftover of. This
+# script now pulls results/transfer/ itself (the pre-reversal side, minus
+# its combined/ and reversal/ subfolders -- see sync_combined.sh and below)
+# and results/transfer/reversal/ (the reversal-learning side) each as one
+# whole directory, rather than enumerating every result subfolder by name --
+# the old enumerated list had already drifted out of date (missing e.g.
+# reproducibility/, reversal_2500_ckpt/, reversal_5000_ckpt/) and a fresh
+# intervention/sweep study now only needs this script re-run, not edited.
 #
-# reversal_study/reproducibility/ is skipped entirely: its training/ is
-# empty, and its cxval/, inference/ are stale duplicates of transfer_final's
-# copies. The scripts that actually produced every run under
-# data/rnns/reversal/ live at the repo root, scripts/16_06_26_*.py -- pulled
-# in separately below, renamed into data/rnns/reversal/reproducibility/.
+# Known scratch/junk dirs (_to_delete, _smoketest, _mock_test,
+# _stub_placeholder_not_real, _stale, _exploration -- flagged during the
+# Aug/Sep cleanup pass, not real content) are excluded.
 #
 # Re-run any time the source repo changes; pass --dry-run (or -n) to preview.
 set -euo pipefail
 
-SRC="${CXVAL_REPO:-$HOME/Documents/context-value-RNNs}"
+SRC="${CXVAL_REPO:-$HOME/Documents/context-value-RNNs}/results/transfer"
 DST="$(cd "$(dirname "$0")" && pwd)/data/rnns"
 
-EXCLUDES=(--exclude='__pycache__/' --exclude='.DS_Store' --exclude='*.pyc')
+TOP_EXCLUDES=(
+  --exclude='__pycache__/' --exclude='.DS_Store' --exclude='*.pyc'
+  --exclude='_to_delete/' --exclude='_smoketest/' --exclude='_mock_test/'
+  --exclude='_stub_placeholder_not_real/' --exclude='_stale/' --exclude='_exploration/'
+  --exclude='smoketest/'
+  --exclude='/combined/'   # synced separately, see sync_combined.sh
+  --exclude='/reversal/'   # synced separately, below
+  --exclude='/code/'       # CODE, not data -- synced into top-level extract/analysis/fig_gen/
+                            # instead, see sync_code.py (called from sync_all.sh)
+)
+REV_EXCLUDES=(
+  --exclude='__pycache__/' --exclude='.DS_Store' --exclude='*.pyc'
+  --exclude='_to_delete/' --exclude='_smoketest/' --exclude='_mock_test/'
+  --exclude='_stub_placeholder_not_real/' --exclude='_stale/' --exclude='_exploration/'
+  --exclude='smoketest/'
+  # reversal/code/'s analysis+fig-gen .py/.mplstyle files -- CODE, not data --
+  # synced into top-level analysis/fig_gen/ instead, see sync_code.py. The
+  # run_*_full.sh / run_reward_scale_*.sh sweep launchers in that same
+  # directory are reproducibility/training material and stay put.
+  --exclude='/code/*.py'
+  --exclude='/code/*.mplstyle'
+)
 
-mkdir -p "$DST" "$DST/reversal/reproducibility"
+mkdir -p "$DST" "$DST/reversal"
 
-echo "== transfer_final/ (pre-reversal side) -> data/rnns/ =="
-for d in code reproducibility model_runs figure_data figures; do
-  mkdir -p "$DST/$d"
-  rsync -avh "${EXCLUDES[@]}" "$@" "$SRC/transfer_final/$d/" "$DST/$d/"
-done
-rsync -avh "$@" "$SRC/transfer_final/README.md" "$SRC/transfer_final/environment.yml" "$SRC/transfer_final/requirements.txt" "$DST/"
+echo "== results/transfer/ (pre-reversal side, minus combined/ + reversal/) -> data/rnns/ =="
+rsync -avh "${TOP_EXCLUDES[@]}" "$@" "$SRC/" "$DST/"
 
 echo
-echo "== reversal_study/ (reversal-learning side) -> data/rnns/reversal/ =="
-mkdir -p "$DST/reversal/code"
-rsync -avh "${EXCLUDES[@]}" "$@" "$SRC/reversal_study/code/" "$DST/reversal/code/"
-rsync -avh "$@" "$SRC/reversal_study/README.md" "$DST/reversal/"
-for d in reversal_2500 reversal_5000 population_similarity rsa \
-         action_std_0p15_full action_std_pilot min_vigour_0p1_full \
-         squash_1p3_full reward_scale_intervention terminal_rpe \
-         terminal_value_minvig vigour_floor_pilot; do
-  mkdir -p "$DST/reversal/$d"
-  rsync -avh "${EXCLUDES[@]}" "$@" "$SRC/reversal_study/results/$d/" "$DST/reversal/$d/"
-done
-
-echo
-echo "== reversal training/inference scripts (repo-root scripts/, not reversal_study/) -> data/rnns/reversal/reproducibility/ =="
-for f in train_model train_reversal run_inference; do
-  rsync -avh "$@" "$SRC/scripts/16_06_26_${f}.py" "$DST/reversal/reproducibility/${f}.py"
-done
+echo "== results/transfer/reversal/ (reversal-learning side, whole) -> data/rnns/reversal/ =="
+rsync -avh "${REV_EXCLUDES[@]}" "$@" "$SRC/reversal/" "$DST/reversal/"

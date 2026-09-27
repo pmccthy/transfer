@@ -1,0 +1,30 @@
+# Shared style for all transfer figure panels and composites.
+# Loaded by panels/_tags.py (plt.style.use).
+
+# Fonts — much larger axis labels (not bold), larger ticks
+axes.labelsize:      22
+axes.labelweight:    normal
+axes.titlesize:      12
+xtick.labelsize:     18
+ytick.labelsize:     18
+legend.fontsize:     14
+font.size:           14
+
+# No top/right spines anywhere
+axes.spines.top:     False
+axes.spines.right:   False
+
+# No borders on bars / patches by default (bar plots draw with no edge)
+patch.linewidth:        0
+patch.force_edgecolor:  False
+
+legend.frameon:      False
+
+figure.dpi:          100
+savefig.dpi:         150
+savefig.bbox:        tight
+
+# Font family -- Helvetica everywhere, with sane fallbacks for machines
+# that don't have it installed (e.g. Linux without the Apple/MS fonts).
+font.family:       sans-serif
+font.sans-serif:   Helvetica, Arial, Nimbus Sans, DejaVu Sans, sans-serif
